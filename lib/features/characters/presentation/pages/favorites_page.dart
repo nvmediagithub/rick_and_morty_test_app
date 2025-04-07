@@ -11,14 +11,10 @@ class FavoriteCharactersPage extends StatefulWidget {
 }
 
 class _FavoriteCharactersPageState extends State<FavoriteCharactersPage> {
-  final GlobalKey<AnimatedListState> _listKey = GlobalKey<AnimatedListState>();
-  List<FavoriteCharacterEntity> _localFavorites = [];
-
   @override
   void initState() {
     super.initState();
-    final cubit = context.read<FavoriteCubit>();
-    cubit.loadFavorites();
+    context.read<FavoriteCubit>().loadFavorites();
   }
 
   @override
@@ -27,25 +23,13 @@ class _FavoriteCharactersPageState extends State<FavoriteCharactersPage> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Избранные персонажи')),
-      body: BlocConsumer<FavoriteCubit, FavoriteState>(
-        listener: (context, state) {
-          if (state is FavoriteLoaded) {
-            // если первый раз — заполняем локально
-            if (_localFavorites.isEmpty && state.favorites.isNotEmpty) {
-              _localFavorites = List.from(state.favorites);
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                for (int i = 0; i < _localFavorites.length; i++) {
-                  _listKey.currentState?.insertItem(i);
-                }
-              });
-            }
-          }
-        },
+      body: BlocBuilder<FavoriteCubit, FavoriteState>(
         builder: (context, state) {
           if (state is FavoriteLoading) {
             return const Center(child: CircularProgressIndicator());
           } else if (state is FavoriteLoaded) {
-            if (_localFavorites.isEmpty) {
+            final favorites = state.favorites;
+            if (favorites.isEmpty) {
               return Center(
                 child: Text(
                   'Нет избранных персонажей',
@@ -54,33 +38,25 @@ class _FavoriteCharactersPageState extends State<FavoriteCharactersPage> {
               );
             }
 
-            return AnimatedList(
-              key: _listKey,
-              initialItemCount: _localFavorites.length,
+            return ListView.builder(
               padding: const EdgeInsets.only(bottom: 16),
-              itemBuilder: (context, index, animation) {
-                final character = _localFavorites[index];
-                return SizeTransition(
-                  sizeFactor: animation,
-                  child: Stack(
-                    alignment: Alignment.topRight,
-                    children: [
-                      CharacterCard(character: toCharacter(character)),
-                      Positioned(
-                        top: 8,
-                        right: 8,
-                        child: IconButton(
-                          icon: const Icon(
-                            Icons.delete,
-                            color: Colors.redAccent,
-                          ),
-                          onPressed: () {
-                            _removeCharacter(character, index);
-                          },
-                        ),
-                      ),
-                    ],
+              itemCount: favorites.length,
+              itemBuilder: (context, index) {
+                final character = favorites[index];
+
+                return Dismissible(
+                  key: ValueKey(character.id),
+                  direction: DismissDirection.endToStart,
+                  background: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    alignment: Alignment.centerRight,
+                    color: Colors.redAccent,
+                    child: const Icon(Icons.delete, color: Colors.white),
                   ),
+                  onDismissed: (_) {
+                    context.read<FavoriteCubit>().removeFavorite(character.id);
+                  },
+                  child: CharacterCard(character: toCharacter(character)),
                 );
               },
             );
@@ -97,18 +73,5 @@ class _FavoriteCharactersPageState extends State<FavoriteCharactersPage> {
         },
       ),
     );
-  }
-
-  void _removeCharacter(FavoriteCharacterEntity character, int index) {
-    final removedItem = _localFavorites.removeAt(index);
-    _listKey.currentState?.removeItem(
-      index,
-      (context, animation) => SizeTransition(
-        sizeFactor: animation,
-        child: CharacterCard(character: toCharacter(removedItem)),
-      ),
-      duration: const Duration(milliseconds: 300),
-    );
-    context.read<FavoriteCubit>().removeFavorite(character.id);
   }
 }
