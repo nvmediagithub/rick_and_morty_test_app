@@ -14,15 +14,19 @@ class CharacterRepositoryImpl implements CharacterRepository {
   });
 
   @override
-  Future<List<CharacterEntity>> getCharacters() async {
-    // Попытка загрузить данные из локального кэша
-    final cached = await database.getAllCachedCharacters();
-    if (cached.isNotEmpty) {
-      return cached;
-    } else {
-      // Если кэш пуст, получаем данные с сервера
-      final remoteCharacters = await remoteDataSource.fetchCharacters();
-      // Преобразуем полученные данные в companion для Drift
+  Future<List<CharacterEntity>> getCharacters({int page = 1}) async {
+    if (page == 1) {
+      final cached = await database.getAllCachedCharacters();
+      if (cached.isNotEmpty) {
+        return cached;
+      }
+    }
+
+    // Подгружаем с API (теперь с учетом страницы)
+    final remoteCharacters = await remoteDataSource.fetchCharacters(page: page);
+
+    // Сохраняем в локальную БД только первую страницу
+    if (page == 1) {
       final companions =
           remoteCharacters
               .map(
@@ -36,19 +40,19 @@ class CharacterRepositoryImpl implements CharacterRepository {
                 ),
               )
               .toList();
-      // Сохраняем в локальную базу
       await database.insertCachedCharacters(companions);
-      return remoteCharacters.map((character) {
-        return CharacterEntity(
-          id: character.id,
-          name: character.name,
-          image: character.image,
-          status: character.status,
-          species: character.species,
-          location: character.location.name,
-          isFavorite: false,
-        );
-      }).toList();
     }
+
+    return remoteCharacters.map((character) {
+      return CharacterEntity(
+        id: character.id,
+        name: character.name,
+        image: character.image,
+        status: character.status,
+        species: character.species,
+        location: character.location.name,
+        isFavorite: false,
+      );
+    }).toList();
   }
 }

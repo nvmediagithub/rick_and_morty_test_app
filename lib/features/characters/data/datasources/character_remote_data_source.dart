@@ -2,7 +2,7 @@ import 'package:dio/dio.dart';
 import '../models/character_model.dart';
 
 abstract class CharacterRemoteDataSource {
-  Future<List<CharacterModel>> fetchCharacters();
+  Future<List<CharacterModel>> fetchCharacters({int page = 1});
 }
 
 class CharacterRemoteDataSourceImpl implements CharacterRemoteDataSource {
@@ -11,8 +11,10 @@ class CharacterRemoteDataSourceImpl implements CharacterRemoteDataSource {
   CharacterRemoteDataSourceImpl({required this.dio});
 
   @override
-  Future<List<CharacterModel>> fetchCharacters() async {
-    final response = await dio.get('https://rickandmortyapi.com/api/character');
+  Future<List<CharacterModel>> fetchCharacters({int page = 1}) async {
+    final response = await dio.get(
+      'https://rickandmortyapi.com/api/character?page=$page',
+    );
     if (response.statusCode == 200) {
       final data = response.data;
       final results = data['results'] as List;

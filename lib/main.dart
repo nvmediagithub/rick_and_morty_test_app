@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:rick_and_morty_app/core/theme/presentation/cubit/theme_cubit.dart';
 import 'package:rick_and_morty_app/features/characters/characters.dart';
 import 'package:rick_and_morty_app/features/home/home.dart';
+import 'package:rick_and_morty_app/theme/app_theme.dart';
 import 'injection_container.dart' as di;
 
 void main() async {
@@ -17,18 +19,24 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
-        // Предоставляем и CharacterCubit, и FavoriteCubit
         BlocProvider<CharacterCubit>(
           create: (context) => di.sl<CharacterCubit>(),
         ),
         BlocProvider<FavoriteCubit>(
           create: (context) => di.sl<FavoriteCubit>(),
         ),
+        BlocProvider<ThemeCubit>(create: (_) => di.sl<ThemeCubit>()),
       ],
-      child: MaterialApp(
-        title: 'Rick and Morty',
-        theme: ThemeData(primarySwatch: Colors.blue),
-        home: const HomeScreen(),
+      child: BlocBuilder<ThemeCubit, ThemeMode>(
+        builder: (context, themeMode) {
+          return MaterialApp(
+            title: 'Rick and Morty',
+            theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
+            themeMode: themeMode,
+            home: const HomeScreen(),
+          );
+        },
       ),
     );
   }

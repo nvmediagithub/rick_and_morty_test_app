@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
+import 'package:rick_and_morty_app/core/theme/presentation/cubit/theme_cubit.dart';
 import 'package:rick_and_morty_app/features/characters/characters.dart';
 
 final sl = GetIt.instance;
@@ -21,7 +22,7 @@ Future<void> init() async {
   );
   // Cubit (каждый вызов создаёт новый экземпляр)
   sl.registerFactory<CharacterCubit>(
-    () => CharacterCubit(getCharactersUseCase: sl()),
+    () => CharacterCubit(getCharactersUseCase: sl(), favoriteRepository: sl()),
   );
 
   // Регистрация базы данных (если Drift используется)
@@ -48,4 +49,6 @@ Future<void> init() async {
       removeFavoriteUseCase: sl<RemoveFavoriteUseCase>(),
     ),
   );
+
+  sl.registerLazySingleton<ThemeCubit>(() => ThemeCubit());
 }

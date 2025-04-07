@@ -6,7 +6,7 @@ class GetCharactersUseCase {
 
   GetCharactersUseCase({required this.repository});
 
-  Future<List<CharacterEntity>> call() async {
-    return await repository.getCharacters();
+  Future<List<CharacterEntity>> call({int page = 1}) async {
+    return await repository.getCharacters(page: page);
   }
 }

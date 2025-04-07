@@ -1,5 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:rick_and_morty_app/features/characters/domain/entities/character_entity.dart';
+import 'package:rick_and_morty_app/features/characters/domain/repositories/favorite_repository.dart';
 import 'package:rick_and_morty_app/features/characters/domain/usecases/get_characters_usecase.dart';
 
 // Определяем состояния
@@ -11,7 +12,8 @@ class CharacterLoading extends CharacterState {}
 
 class CharacterLoaded extends CharacterState {
   final List<CharacterEntity> characters;
-  CharacterLoaded({required this.characters});
+  final bool hasMore;
+  CharacterLoaded({required this.characters, required this.hasMore});
 }
 
 class CharacterError extends CharacterState {
@@ -22,17 +24,63 @@ class CharacterError extends CharacterState {
 // Cubit для загрузки списка персонажей
 class CharacterCubit extends Cubit<CharacterState> {
   final GetCharactersUseCase getCharactersUseCase;
+  final FavoriteRepository favoriteRepository;
 
-  CharacterCubit({required this.getCharactersUseCase})
-    : super(CharacterInitial());
+  CharacterCubit({
+    required this.getCharactersUseCase,
+    required this.favoriteRepository,
+  }) : super(CharacterInitial());
 
-  void fetchCharacters() async {
-    emit(CharacterLoading());
+  int _currentPage = 1;
+  bool _isFetching = false;
+  bool _hasMore = true;
+  List<CharacterEntity> _characters = [];
+
+  Future<void> fetchCharacters({bool isRefresh = false}) async {
+    if (_isFetching || !_hasMore) return;
+    _isFetching = true;
+
+    if (isRefresh) {
+      _currentPage = 1;
+      _hasMore = true;
+      _characters.clear();
+    }
+
+    if (state is! CharacterLoaded && !isRefresh) {
+      emit(CharacterLoading());
+    }
+
     try {
-      final characters = await getCharactersUseCase();
-      emit(CharacterLoaded(characters: characters));
+      final characters = await getCharactersUseCase(page: _currentPage);
+      final favorites = await favoriteRepository.getFavorites();
+      final favoriteIds = favorites.map((e) => e.id).toSet();
+
+      final newCharacters =
+          characters
+              .map(
+                (char) =>
+                    char.copyWith(isFavorite: favoriteIds.contains(char.id)),
+              )
+              .where(
+                (char) =>
+                    !_characters.any((existing) => existing.id == char.id),
+              ) // 🔥 удаляем дубликаты
+              .toList();
+
+      if (newCharacters.isNotEmpty) {
+        _characters.addAll(newCharacters);
+        _currentPage++;
+      } else {
+        _hasMore = false;
+      }
+
+      emit(
+        CharacterLoaded(characters: List.from(_characters), hasMore: _hasMore),
+      );
     } catch (e) {
       emit(CharacterError(message: e.toString()));
+    } finally {
+      _isFetching = false;
     }
   }
 
@@ -55,7 +103,7 @@ class CharacterCubit extends Cubit<CharacterState> {
             }
             return c;
           }).toList();
-      emit(CharacterLoaded(characters: updatedCharacters));
+      emit(CharacterLoaded(characters: updatedCharacters, hasMore: false));
     }
   }
 }

@@ -16,4 +16,23 @@ class CharacterEntity {
     required this.location,
     this.isFavorite = false,
   });
+  CharacterEntity copyWith({
+    int? id,
+    String? name,
+    String? image,
+    String? status,
+    String? species,
+    String? location,
+    bool? isFavorite,
+  }) {
+    return CharacterEntity(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      image: image ?? this.image,
+      status: status ?? this.status,
+      species: species ?? this.species,
+      location: location ?? this.location,
+      isFavorite: isFavorite ?? this.isFavorite,
+    );
+  }
 }
